@@ -1,5 +1,5 @@
-# Usar una imagen base oficial de Go para la compilación
-FROM golang:1.19 as builder
+# Usar una imagen base oficial de Go para la compilación, especificando la plataforma amd64
+FROM --platform=linux/amd64 golang:1.19 as builder
 
 # Establecer el directorio de trabajo
 WORKDIR /app
@@ -14,11 +14,11 @@ RUN go mod download
 # Copiar el resto del código fuente de la aplicación
 COPY . .
 
-# Compilar la aplicación (ajusta el nombre del binario como sea necesario)
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o exporter .
+# Compilar la aplicación asegurando que el binario sea compatible con amd64
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o exporter .
 
-# Usar una imagen base ligera de Alpine para el contenedor final
-FROM alpine:latest  
+# Usar una imagen base ligera de Alpine para el contenedor final, especificando la plataforma amd64
+FROM --platform=linux/amd64 alpine:latest  
 
 # Instalar ca-certificates para llamadas HTTPS
 RUN apk --no-cache add ca-certificates
