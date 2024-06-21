@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -21,8 +22,23 @@ var (
 	subscriptionIDFlag = flag.String("subscription-id", "", "Azure Subscription ID")
 )
 
+func startHttpServer() {
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	log.Println("Starting HTTP server on port 8080")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatalf("Failed to start HTTP server: %v", err)
+	}
+}
+
 func main() {
 	flag.Parse() // Parse the flags from command line
+
+	// Start the HTTP server for health checks
+	go startHttpServer()
 
 	if err := run(); err != nil {
 		log.Fatalf("Error running exporter: %v", err)
