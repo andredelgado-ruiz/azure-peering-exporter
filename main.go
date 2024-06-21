@@ -10,6 +10,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -20,9 +22,23 @@ var (
 	clientIDFlag       = flag.String("client-id", "", "Azure Client ID")
 	clientSecretFlag   = flag.String("client-secret", "", "Azure Client Secret")
 	subscriptionIDFlag = flag.String("subscription-id", "", "Azure Subscription ID")
+
+	peeringState = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "azure_vnet_peering_state",
+			Help: "State of Azure VNet peering.",
+		},
+		[]string{"resource_group", "vnet_name", "peering_name"},
+	)
 )
 
+func init() {
+	// Register the metric with Prometheus
+	prometheus.MustRegister(peeringState)
+}
+
 func startHttpServer() {
+	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
@@ -37,7 +53,7 @@ func startHttpServer() {
 func main() {
 	flag.Parse() // Parse the flags from command line
 
-	// Start the HTTP server for health checks
+	// Start the HTTP server for health checks and metrics
 	go startHttpServer()
 
 	if err := run(); err != nil {
@@ -95,7 +111,12 @@ func listPeerings(client *armnetwork.VirtualNetworkPeeringsClient, resourceGroup
 		}
 
 		for _, peering := range resp.Value {
-			fmt.Printf("[%s] Peering Name: %s, State: %s\n", time.Now().Format(time.RFC3339), *peering.Name, *peering.Properties.PeeringState)
+			state := 0
+			if *peering.Properties.PeeringState == "Connected" {
+				state = 1
+			}
+			// Update the metric with the current state of the peering
+			peeringState.WithLabelValues(resourceGroup, vnetName, *peering.Name).Set(float64(state))
 		}
 	}
 	return nil
