@@ -30,11 +30,19 @@ var (
 		},
 		[]string{"resource_group", "vnet_name", "peering_name"},
 	)
+
+	peeringSyncLevel = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "azure_vnet_peering_sync_level",
+			Help: "Sync level of Azure VNet peering, indicating synchronization status.",
+		},
+		[]string{"resource_group", "vnet_name", "peering_name", "sync_status"},
+	)
 )
 
 func init() {
 	// Register the metric with Prometheus
-	prometheus.MustRegister(peeringState)
+	prometheus.MustRegister(peeringState, peeringSyncLevel)
 }
 
 func startHttpServer() {
@@ -115,8 +123,27 @@ func listPeerings(client *armnetwork.VirtualNetworkPeeringsClient, resourceGroup
 			if *peering.Properties.PeeringState == "Connected" {
 				state = 1
 			}
-			// Update the metric with the current state of the peering
 			peeringState.WithLabelValues(resourceGroup, vnetName, *peering.Name).Set(float64(state))
+
+			// Manejar peeringSyncLevel basado en los valores específicos
+			var syncLevel float64
+			var syncStatus string
+			if peering.Properties.PeeringSyncLevel != nil {
+				// Asegurarse de que el puntero no es nil antes de convertirlo
+				syncStatus = string(*peering.Properties.PeeringSyncLevel)
+				switch syncStatus {
+				case "FullyInSync":
+					syncLevel = 1
+				case "LocalNotInSync":
+					syncLevel = 0
+				default:
+					syncLevel = -1 // Para estados desconocidos o no manejados
+				}
+			} else {
+				syncLevel = -1         // No disponible o no especificado
+				syncStatus = "Unknown" // Usar "Unknown" cuando el nivel de sincronización no está disponible
+			}
+			peeringSyncLevel.WithLabelValues(resourceGroup, vnetName, *peering.Name, syncStatus).Set(syncLevel)
 		}
 	}
 	return nil

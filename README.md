@@ -5,13 +5,14 @@ The Azure Peering Exporter is a Prometheus exporter designed to fetch and expose
 ## Metrics Supported
 
 - `azure_peering_state`: Displays the current state of each peering connection within a specified virtual network.
+- `azure_vnet_peering_sync_level`: Indicates the synchronization status of each peering connection within a specified virtual network, providing insights into the consistency of network configurations across peered networks.
 
 Azure Virtual Network documentation: [Azure Virtual Network Documentation](https://docs.microsoft.com/en-us/azure/virtual-network/)
 
 ## TODO
 
 - [x] Implement basic peering state metrics.
-- [ ] Add more detailed metrics regarding peering statuses.
+- [x] Add synchronization status metrics for peerings.
 - [ ] Implement error handling and retries for API requests.
 - [ ] Introduce security enhancements for sensitive data handling.
 
@@ -69,6 +70,10 @@ Examples of the metrics exposed by this exporter:
 # HELP azure_peering_state Current state of the Azure VNet peering.
 # TYPE azure_peering_state gauge
 azure_peering_state{peering_name="example-peering", resource_group="example-rg", vnet_name="example-vnet"} 1
+
+# HELP azure_vnet_peering_sync_level Sync level of Azure VNet peering, indicating synchronization status.
+# TYPE azure_vnet_peering_sync_level gauge
+azure_vnet_peering_sync_level{peering_name="example-peering", resource_group="example-rg", vnet_name="example-vnet", sync_status="FullyInSync"} 1
 ```
 
 ### Contribute
