@@ -110,7 +110,17 @@ func createNetworkClient() (*armnetwork.VirtualNetworkPeeringsClient, error) {
 	return client, nil
 }
 
+type peeringSample struct {
+	resourceGroup string
+	vnetName      string
+	peeringName   string
+	state         float64
+	syncStatus    string
+	syncLevel     float64
+}
+
 func listPeerings(client *armnetwork.VirtualNetworkPeeringsClient, resourceGroup, vnetName string) error {
+	var samples []peeringSample
 	pager := client.NewListPager(resourceGroup, vnetName, nil)
 	for pager.More() {
 		resp, err := pager.NextPage(context.Background())
@@ -123,7 +133,6 @@ func listPeerings(client *armnetwork.VirtualNetworkPeeringsClient, resourceGroup
 			if *peering.Properties.PeeringState == "Connected" {
 				state = 1
 			}
-			peeringState.WithLabelValues(resourceGroup, vnetName, *peering.Name).Set(float64(state))
 
 			// Manejar peeringSyncLevel basado en los valores específicos
 			var syncLevel float64
@@ -143,8 +152,28 @@ func listPeerings(client *armnetwork.VirtualNetworkPeeringsClient, resourceGroup
 				syncLevel = -1         // No disponible o no especificado
 				syncStatus = "Unknown" // Usar "Unknown" cuando el nivel de sincronización no está disponible
 			}
-			peeringSyncLevel.WithLabelValues(resourceGroup, vnetName, *peering.Name, syncStatus).Set(syncLevel)
+
+			samples = append(samples, peeringSample{
+				resourceGroup: resourceGroup,
+				vnetName:      vnetName,
+				peeringName:   *peering.Name,
+				state:         float64(state),
+				syncStatus:    syncStatus,
+				syncLevel:     syncLevel,
+			})
 		}
 	}
+	publish(samples)
 	return nil
+}
+
+// publish replaces all series so a previous sync_status or a deleted peering
+// does not keep being exported.
+func publish(samples []peeringSample) {
+	peeringState.Reset()
+	peeringSyncLevel.Reset()
+	for _, s := range samples {
+		peeringState.WithLabelValues(s.resourceGroup, s.vnetName, s.peeringName).Set(s.state)
+		peeringSyncLevel.WithLabelValues(s.resourceGroup, s.vnetName, s.peeringName, s.syncStatus).Set(s.syncLevel)
+	}
 }
