@@ -17,6 +17,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o azur
 # Usar una imagen base ligera de Alpine para el contenedor final, especificando la plataforma amd64
 FROM --platform=linux/amd64 alpine:latest  
 
+LABEL org.opencontainers.image.source="https://github.com/andredelgado-ruiz/azure-peering-exporter"
+LABEL org.opencontainers.image.description="Prometheus exporter for Azure VNet peering state and sync level"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+
 # Instalar ca-certificates para llamadas HTTPS
 RUN apk --no-cache add ca-certificates
 

@@ -55,12 +55,28 @@ user@host: ./azure_exporter --tenant-id xxxx --client-id xxxx --client-secret xx
 
 ### Option B) Docker
 
-Build the Docker image and run it with the necessary arguments:
+Pull the published image from the GitHub Container Registry:
+
+```sh
+docker pull ghcr.io/andredelgado-ruiz/azure-peering-exporter:1.1.0
+docker run --rm -it -p 8080:8080 ghcr.io/andredelgado-ruiz/azure-peering-exporter:1.1.0 --tenant-id xxxx --client-id xxxx --client-secret xxxx --subscription-id xxxx --resource-group xxxx --vnet-name xxxx --interval 300
+```
+
+Or build the image locally and run it with the necessary arguments:
 
 ```sh
 docker build -t azure_peering_exporter .
 docker run --rm -it -p 8080:8080 azure_peering_exporter --tenant-id xxxx --client-id xxxx --client-secret xxxx --subscription-id xxxx --resource-group xxxx --vnet-name xxxx --interval 300
 ```
+
+### Releases
+
+Images are published automatically to [GitHub Packages](https://github.com/andredelgado-ruiz/azure-peering-exporter/pkgs/container/azure-peering-exporter) by the `Release container image` workflow whenever a `vX.Y.Z` tag is pushed. Each release publishes the version tag and updates `latest`.
+
+| Version | Changes |
+| --- | --- |
+| 1.1.0 | Added the `azure_vnet_peering_sync_level` metric and stale series are now dropped between collection cycles. |
+| 1.0.0 | Initial release. |
 
 ### Metrics
 
